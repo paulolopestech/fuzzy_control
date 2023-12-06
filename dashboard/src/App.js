@@ -29,15 +29,9 @@ export const options = {
       position: "top",
     },
   },
-    scales: {
-    y: {
-      min: -20,
-      max: 20,
-   }
-  }
 };
 
-const labels = Array.from({ length: 4000 }, (_, index) => index).reverse();
+const labels = [0];
 const grayBG = "#BFBFBF";
 const blueBG = "#0E1C36";
 const whiteBG = "#FFF";
@@ -149,26 +143,9 @@ function App() {
   const [temperature, setTemperature] = useState(temperatureData);
   const [erro, setErro] = useState(errorData);
 
-  const maxLen = 10000;
-  const removeLen = 20;
-
   useMemo(() => {
     setSocket(new WebSocket("ws://localhost:3001"));
   }, []);
-
-  const updateData = (setData, newData) => {
-    setData((currentData) => {
-      const currentDataCopy = JSON.parse(JSON.stringify(currentData));
-      currentDataCopy.datasets[0].data = [
-        ...currentData.datasets[0].data,
-        ...newData,
-      ];
-      if (currentDataCopy.datasets[0].data.length > maxLen) {
-        currentDataCopy.datasets[0].data.slice(removeLen);
-      }
-      return currentDataCopy;
-    });
-  };
 
   useEffect(() => {
     socket.addEventListener("open", () => {
@@ -176,13 +153,30 @@ function App() {
     });
     socket.addEventListener("message", (event) => {
       const { topic, message } = JSON.parse(event.data);
-      console.log("MESSAGE::::", event);
       if (topic === "Resfriador/Temperatura") {
-        updateData(setTemperature, message);
+        const newData = [...temperature.datasets[0].data, message]
+        const labelsLenght = temperature.labels.length
+        const newLabels = [...temperature.labels, temperature.labels[labelsLenght - 1] + 1]
+        setTemperature({
+          labels: newLabels,
+          datasets: [{
+            ...temperature.datasets[0],
+            data: newData,
+          }]
+        })
       }
 
       if (topic === "Resfriador/erro") {
-        updateData(setErro, message);
+        const newData = [...erro.datasets[0].data, message]
+        const labelsLenght = erro.labels.length
+        const newLabels = [...erro.labels, erro.labels[labelsLenght - 1] + 1]
+        setErro({
+          labels: newLabels,
+          datasets: [{
+            ...erro.datasets[0],
+            data: newData,
+          }]
+        })
       }
     });
 
@@ -190,7 +184,7 @@ function App() {
       console.log("Conexão fechada.");
       socket.close();
     });
-  }, [socket]);
+  }, [socket, temperature, erro]);
 
   return (
     <Box sx={styles.container}>
